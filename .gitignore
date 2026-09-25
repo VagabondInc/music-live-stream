@@ -2,3 +2,14 @@
 .AppleDouble
 .LSOverride
 __MACOSX/
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# macOS
+.DS_Store
