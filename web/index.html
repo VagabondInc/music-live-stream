@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ASCII Broadcast — turn a playlist into a channel</title>
+<meta name="description" content="ASCII Broadcast is a native Mac, iPad and iPhone studio that turns your playlist into a music-responsive ASCII broadcast and streams it to YouTube Live." />
+<meta property="og:title" content="ASCII Broadcast" />
+<meta property="og:description" content="A playlist in. A channel out. Music-responsive ASCII art, composed as a score and streamed live." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar" role="banner">
+  <div class="topbar__brand">
+    <svg class="mark" viewBox="0 0 24 18" aria-hidden="true"><path d="M0 18 L7 0 L12 8 L17 0 L24 18 L18 18 L12 9.5 L6 18 Z"/></svg>
+    <span class="brand__name">VAGABOND</span>
+    <span class="rule">//</span>
+    <span class="brand__product">ASCII BROADCAST</span>
+  </div>
+  <nav class="topbar__nav" aria-label="Sections">
+    <a href="#studio">STUDIO</a>
+    <a href="#engine">ENGINE</a>
+    <a href="#broadcast">BROADCAST</a>
+    <a href="#specs">SPECS</a>
+  </nav>
+  <a class="topbar__cta" href="#download">DOWNLOAD</a>
+</header>
+
+<main>
+
+  <section class="hero" id="top">
+    <div class="hero__copy">
+      <p class="eyebrow">MAC · IPAD · IPHONE</p>
+      <h1>A playlist in.<br />A channel out.</h1>
+      <p class="lede">
+        ASCII Broadcast listens to your music, writes a visual score for it, and renders a
+        composed ASCII world that moves with the track — then sends the whole thing to
+        YouTube Live at 1080p. No browser, no capture card, no second machine.
+      </p>
+      <div class="hero__actions">
+        <a class="appstore" href="#download" aria-label="Download on the App Store">
+          <svg viewBox="0 0 20 24" aria-hidden="true"><path d="M13.7 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .7 1.1 1.6 2.3 2.8 2.3 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.2 1.2-2.4 1.2-2.5 0 0-2.3-.9-2.3-3.5zM11.5 5.3c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.8 1 .1 2-.5 2.7-1.3z"/></svg>
+          <span><small>Download on the</small>App Store</span>
+        </a>
+        <a class="ghost" href="#studio">SEE THE STUDIO</a>
+      </div>
+      <p class="fineprint">Requires macOS 14, iPadOS 17 or iOS 17. One-time purchase. No account needed to render locally.</p>
+    </div>
+
+    <figure class="hero__preview" aria-label="Preview of the ASCII Broadcast program output">
+      <div class="monitor">
+        <div class="monitor__bar">
+          <span class="dot dot--cyan"></span>
+          <span class="mono">PROGRAM // SCENE 03 // THE STATION OPENS</span>
+          <span class="live"><span class="dot dot--red"></span>LIVE</span>
+        </div>
+        <pre class="ascii" id="ascii" aria-hidden="true"></pre>
+        <div class="monitor__strip mono">
+          <span>WORLD: <b id="hudWorld">NIGHT_TRANSIT</b></span>
+          <span>GLYPHS: <b>STANDARD</b></span>
+          <span>RENDER: <b>REALTIME</b></span>
+          <span class="right">TC <b id="hudTC">00:01:42:18</b></span>
+        </div>
+      </div>
+      <figcaption class="mono">Rendered in your browser as a preview. The app renders the same grammar at 1080p30 with hardware H.264.</figcaption>
+    </figure>
+  </section>
+
+  <section class="band" id="studio">
+    <h2>The whole broadcast on one surface</h2>
+    <p class="section-lede">
+      Queue, program monitor, visual score, output and health — visible at once, legible from
+      across a room. The studio is built the way live rooms are: nothing important hides behind a menu.
+    </p>
+
+    <div class="studio-shot" role="img" aria-label="Diagram of the ASCII Broadcast studio layout">
+      <div class="shot__top mono">
+        <span>VAGABOND // ASCII BROADCAST</span>
+        <span class="shot__session">SESSION: GLASS_CITIES</span>
+        <span class="shot__state">PIPELINE // SENDING <i class="dot dot--green"></i></span>
+      </div>
+      <div class="shot__body">
+        <div class="panel panel--queue">
+          <div class="panel__head mono">QUEUE // 09 TRACKS</div>
+          <ul class="queue mono" id="queueList"></ul>
+          <div class="panel__head panel__head--sub mono">NEXT UP</div>
+          <ul class="queue queue--next mono">
+            <li><i class="dot dot--green"></i><span>PAPER SATELLITES</span><b>05:21</b></li>
+            <li><i class="dot dot--amber"></i><span>NEON FIELDS</span><b>04:38</b></li>
+          </ul>
+        </div>
+
+        <div class="panel panel--program">
+          <div class="panel__head mono">PROGRAM</div>
+          <pre class="ascii ascii--small" id="asciiSmall" aria-hidden="true"></pre>
+          <div class="score" aria-hidden="true">
+            <div class="score__row"><span class="mono">CHAPTERS</span><div class="lane"><b class="cue cue--amber" style="left:0;width:26%">A THE ARRIVAL</b><b class="cue cue--cyan" style="left:27%;width:31%">B THE TRANSIT</b><b class="cue cue--green" style="left:59%;width:24%">C THE CITY</b><b class="cue cue--red" style="left:84%;width:16%">A′ RETURN</b></div></div>
+            <div class="score__row"><span class="mono">SCENES</span><div class="lane"><b class="cue" style="left:0;width:14%">01_INTRO</b><b class="cue" style="left:15%;width:15%">02_APPROACH</b><b class="cue cue--active" style="left:31%;width:18%">03_STATION_OPEN</b><b class="cue" style="left:50%;width:16%">04_FOLDED_CITY</b><b class="cue" style="left:67%;width:16%">05_ARCHIVE</b><b class="cue" style="left:84%;width:16%">06_CALLBACK</b></div></div>
+            <div class="score__row"><span class="mono">TRANSITIONS</span><div class="lane"><b class="cue cue--ghost" style="left:12%;width:10%">FADE IN</b><b class="cue cue--ghost" style="left:29%;width:10%">BEAT MATCH</b><b class="cue cue--ghost" style="left:48%;width:9%">GLITCH</b><b class="cue cue--ghost" style="left:66%;width:11%">CROSSFADE</b><b class="cue cue--ghost" style="left:88%;width:10%">FADE OUT</b></div></div>
+            <div class="score__row"><span class="mono">TITLES</span><div class="lane"><b class="cue cue--fill" style="left:6%;width:18%">GLASS CITIES</b><b class="cue cue--fill-dim" style="left:26%;width:16%">TYLER JAY</b><b class="cue cue--fill-dim" style="left:76%;width:18%">NIGHT TRANSIT</b></div></div>
+            <div class="score__row"><span class="mono">MEMORY</span><div class="lane lane--marks"><i style="left:4%"></i><i style="left:19%"></i><i style="left:36%"></i><i style="left:52%"></i><i style="left:68%"></i><i style="left:83%"></i><i style="left:95%"></i></div></div>
+            <div class="playhead" id="playhead"></div>
+          </div>
+        </div>
+
+        <div class="panel panel--dna">
+          <div class="panel__head mono">VISUAL_DNA</div>
+          <div class="dna mono">
+            <div class="dna__row"><span>PRESET</span><b>NIGHT_TRANSIT</b></div>
+            <div class="dna__row"><span>WORLD</span><b>NIGHT_TRANSIT</b></div>
+            <div class="dna__row"><span>PERFORMANCE</span><b>EXPRESSIVE</b></div>
+            <div class="dna__row"><span>DETAIL</span><b>LAYERED</b></div>
+            <div class="dna__row"><span>COLOR</span><b>RESTRAINED</b></div>
+            <div class="slider"><span>GLYPHS</span><div class="segments"><i></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i></i></div><b>70</b></div>
+            <div class="slider"><span>MOTION</span><div class="track"><i style="width:60%"></i></div><b>60</b></div>
+            <div class="slider"><span>GLITCH</span><div class="track"><i class="warn" style="width:18%"></i></div><b>18</b></div>
+            <div class="slider"><span>TITLES</span><div class="track"><i style="width:80%"></i></div><b>80</b></div>
+            <div class="slider"><span>CAMERA</span><div class="track"><i style="width:50%"></i></div><b>50</b></div>
+            <div class="dna__safe">✔ PHOTOSENSITIVITY_SAFE</div>
+          </div>
+        </div>
+      </div>
+      <div class="shot__deck">
+        <div class="deckcard mono"><span>NOW_PLAYING</span><b>01 // GLASS CITIES</b><small>TYLER JAY · 01:42 / 04:06</small></div>
+        <div class="deckcard mono"><span>TRANSPORT</span><b class="big" id="deckTC">00:01:42:18</b><small>BPM 122 · 4/4 · LOOP · AUTO ADVANCE</small></div>
+        <div class="deckcard mono"><span>OUTBOUND_STATE</span><b class="green">SENDING</b><small>YOUTUBE · LIVE STATUS UNVERIFIED</small></div>
+        <div class="deckcard mono"><span>STREAM_HEALTH</span><b>1080p30 · 9.8 Mbps</b><small>DROPPED 0.02% · NETWORK GOOD</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band--split" id="engine">
+    <div>
+      <h2>An engine that composes, not just reacts</h2>
+      <p>
+        Most audio visualisers map loudness to a shape and leave it there. ASCII Broadcast
+        analyses each track first — tempo, meter, sections, energy, brightness — and writes a
+        <b>visual score</b>: chapters, scenes, transitions, titles, signal effects and memory
+        marks laid out along the whole programme before a single frame is drawn.
+      </p>
+      <p>
+        Scenes are authored worlds, not filters. Folded City builds architecture out of
+        punctuation. Weaving Engine grows a lattice that remembers what it made. Negative Space
+        Theatre withholds, then pays off. Motifs return. Chapter A′ recalls chapter A. It reads
+        as a piece, because it is composed as one.
+      </p>
+      <ul class="ticks">
+        <li>Deterministic and seeded — the same playlist renders the same show.</li>
+        <li>Reacts inside a plan: the beat drives the surface, the score drives the arc.</li>
+        <li>Degrades gracefully: detail is shed before timing is.</li>
+      </ul>
+    </div>
+    <div class="cards">
+      <article class="card"><h3>FOLDED CITY</h3><p>Concourses, signage and platforms assembled from <code>│ ─ ┌ ╱ ▓</code>. Perspective is drawn, never photographed.</p></article>
+      <article class="card"><h3>WEAVING ENGINE</h3><p>A lattice that accumulates, stresses and releases. Rhythmic density becomes literal structure.</p></article>
+      <article class="card"><h3>NEGATIVE SPACE</h3><p>Emptiness as an instrument. The field holds its breath so the drop has somewhere to land.</p></article>
+    </div>
+  </section>
+
+  <section class="band band--dark" id="broadcast">
+    <h2>A real broadcast pipeline, on your machine</h2>
+    <div class="grid3">
+      <article>
+        <h3>Native encode</h3>
+        <p>VideoToolbox H.264 High at 1080p30 and AAC-LC 44.1 kHz, muxed to FLV and published over RTMPS. The program bus runs at 48 kHz; the single sample-rate conversion happens on the way out.</p>
+      </article>
+      <article>
+        <h3>Two honest states</h3>
+        <p>The studio reports what it is doing — <b>SENDING</b> — and what the destination says — <b>LIVE STATUS UNVERIFIED</b> — as separate values. It will never tell you that you are live when it only knows a socket is open.</p>
+      </article>
+      <article>
+        <h3>Recording is a safety net</h3>
+        <p>A local MP4 records alongside the stream. If the network drops, the encoder keeps running, the reconnect backs off, the music never stops, and you still have the session.</p>
+      </article>
+      <article>
+        <h3>Preflight before air</h3>
+        <p>Sources, analysis coverage, score, destination shape, stream key, disk headroom and frame budget are all checked. Every blocking item says what is wrong and the single action that clears it.</p>
+      </article>
+      <article>
+        <h3>Photosensitivity safeguards</h3>
+        <p>Luminance flashes are limited to three per second, full-frame inversions are suppressed, and Reduce Motion clamps the camera grammar. On by default.</p>
+      </article>
+      <article>
+        <h3>Your keys stay yours</h3>
+        <p>Stream keys live in the keychain — never in the session file, logs, diagnostics or exported presets. Presets export the look, not your library.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="band" id="how">
+    <h2>Three steps to air</h2>
+    <ol class="steps">
+      <li><span>01</span><h3>ANALYSE</h3><p>Import a playlist. Tempo, meter, sections and energy are read once per file, about a second per minute of audio.</p></li>
+      <li><span>02</span><h3>GENERATE</h3><p>The art director writes a Visual DNA from the programme and compiles a score you can read, edit and accept.</p></li>
+      <li><span>03</span><h3>SEND</h3><p>Preflight, then go. The channel runs unattended for hours, recording locally the whole time.</p></li>
+    </ol>
+  </section>
+
+  <section class="band band--dark" id="specs">
+    <h2>Specifications</h2>
+    <div class="specs mono">
+      <div><span>PLATFORMS</span><b>macOS 14 · iPadOS 17 · iOS 17</b></div>
+      <div><span>OUTPUT</span><b>1920×1080 @ 30 · 1280×720 @ 30</b></div>
+      <div><span>VIDEO</span><b>H.264 High, VideoToolbox, 2 s keyframes</b></div>
+      <div><span>AUDIO</span><b>AAC-LC 44.1 kHz stereo, 128 kbps</b></div>
+      <div><span>TRANSPORT</span><b>RTMPS (TLS) · RTMP · local MP4</b></div>
+      <div><span>GRID</span><b>160–240 columns, 2:1 cells</b></div>
+      <div><span>ANALYSIS</span><b>24-band spectral, on-device, offline</b></div>
+      <div><span>PRIVACY</span><b>No accounts, no telemetry, no uploads</b></div>
+    </div>
+    <p class="note">
+      You are responsible for the rights to the music you broadcast. ASCII Broadcast records what
+      you declare about each track and shows it before you go live; it does not license music and
+      does not judge your library.
+    </p>
+  </section>
+
+  <section class="band download" id="download">
+    <h2>Put your music on the air</h2>
+    <p class="section-lede">One purchase. Runs on the machine you already own.</p>
+    <a class="appstore appstore--lg" href="#download" aria-label="Download on the App Store">
+      <svg viewBox="0 0 20 24" aria-hidden="true"><path d="M13.7 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .7 1.1 1.6 2.3 2.8 2.3 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.2 1.2-2.4 1.2-2.5 0 0-2.3-.9-2.3-3.5zM11.5 5.3c.6-.8 1-1.8.9-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.8 1 .1 2-.5 2.7-1.3z"/></svg>
+      <span><small>Download on the</small>App Store</span>
+    </a>
+    <p class="fineprint">App Store listing pending review. This page is a preview of the shipping studio.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="mono">
+    <span>VAGABOND // ASCII BROADCAST</span>
+    <span>© 2026 Vagabond Inc.</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
