@@ -209,8 +209,16 @@ final class NegativeSpaceScene: SceneEpisode {
         let y = rows - height - 2
         grid.fill(x: x, y: y, width: width, height: height,
                   scalar: GlyphVocabulary.space, role: .ground, intensity: 0, depth: 0.45, entity: 2)
-        grid.box(x: x - 1, y: y - 1, width: width + 2, height: height + 2,
-                 role: .structure, intensity: 0.5, depth: 0.5, entity: 2, vocabulary: vocabulary)
+        // Broken contour instead of a literal box: this reads as an aperture
+        // in the wall rather than the UI-looking black rectangle seen in the
+        // programme preview.
+        for row in y..<(y + height) where (row - y) % 3 != 1 {
+            grid.plot(x - 1, row, vocabulary.lines.vertical, role: .structure, intensity: 0.48, depth: 0.5, entity: 2)
+            grid.plot(x + width, row, vocabulary.lines.vertical, role: .structure, intensity: 0.48, depth: 0.5, entity: 2)
+        }
+        for column in x..<(x + width) where (column - x) % 4 != 2 {
+            grid.plot(column, y - 1, vocabulary.lines.horizontal, role: .structure, intensity: 0.42, depth: 0.5, entity: 2)
+        }
         let lintel = Int(Double(snapshot.ports.pressure) * 3)
         if lintel > 0 {
             grid.horizontalLine(y: y - 2, from: x - 2, to: x + width + 1, role: .accent,

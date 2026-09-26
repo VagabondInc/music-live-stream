@@ -103,6 +103,21 @@ final class GlyphGrid {
         cells[i] = GlyphCell(scalar: scalar, role: .atmosphere, intensity: intensity, depth: depth)
     }
 
+    /// Whole-field camera translation used by the music-reactive camera grammar.
+    /// Applied before titles so protected reading remains screen-locked.
+    func translate(dx: Int, dy: Int) {
+        guard dx != 0 || dy != 0 else { return }
+        let source = cells
+        cells = Array(repeating: .empty, count: source.count)
+        for y in 0..<rows {
+            for x in 0..<columns {
+                let nx = x + dx, ny = y + dy
+                guard inBounds(nx, ny) else { continue }
+                cells[index(nx, ny)] = source[index(x, y)]
+            }
+        }
+    }
+
     // MARK: - Primitives
 
     func horizontalLine(y: Int, from x0: Int, to x1: Int,

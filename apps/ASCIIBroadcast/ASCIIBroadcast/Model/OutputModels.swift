@@ -37,7 +37,7 @@ struct OutputProfile: Codable, Hashable, Identifiable {
     }
 
     var glyphRows: Int {
-        Int((Double(glyphColumns) * Double(height) / Double(width) * 2.0).rounded())
+        Int((Double(glyphColumns) * Double(height) / Double(width) / 2.0).rounded())
     }
 
     static let p720 = OutputProfile(name: "720p30", width: 1280, height: 720, frameRate: 30, videoBitrate: 4_000_000)

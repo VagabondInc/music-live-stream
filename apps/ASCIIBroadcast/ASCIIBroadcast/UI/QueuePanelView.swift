@@ -8,6 +8,9 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
 #endif
@@ -129,8 +132,8 @@ struct QueuePanelView: View {
                     model.analyzeAll()
                 }
             }
-            IconButton(systemImage: "trash", accessibilityTitle: "Remove selected track") {
-                if let id = model.selectedInstanceID { model.removeInstance(id) }
+            IconButton(systemImage: "trash", accessibilityTitle: model.libraryTab == .queue ? "Remove selected tracks" : "Delete selected assets") {
+                model.removeSelected()
             }
             IconButton(systemImage: "ellipsis", accessibilityTitle: "More queue actions") {
                 model.installDemoProgram()
@@ -239,10 +242,14 @@ struct QueueRowView: View {
 
     var body: some View {
         Button {
-            model.selectedInstanceID = instance.id
-            if let index = model.playlist.instances.firstIndex(where: { $0.id == instance.id }) {
-                model.skip(to: index)
-            }
+            #if os(macOS)
+            let flags = NSEvent.modifierFlags
+            model.selectQueue(instance.id, command: flags.contains(.command), shift: flags.contains(.shift))
+            #else
+            model.selectQueue(instance.id, command: false, shift: false)
+            #endif
+            if let index = model.playlist.instances.firstIndex(where: { $0.id == instance.id }),
+               model.selectedInstanceIDs.count <= 1 { model.skip(to: index) }
         } label: {
             HStack(spacing: 8) {
                 Text(String(format: "%02d", ordinal))
@@ -271,6 +278,7 @@ struct QueueRowView: View {
                     Image(systemName: rightsIcon)
                         .font(.system(size: 9))
                         .foregroundStyle(rightsColor)
+                        .help(rightsHelp)
                 }
 
                 Text(Timecode.clock(asset?.duration ?? 0))
@@ -290,6 +298,7 @@ struct QueueRowView: View {
             .overlay(alignment: .leading) {
                 StatusDot(color: analysisColor, size: 4)
                     .offset(x: 21, y: 9)
+                    .help(analysisHelp)
             }
             .contentShape(Rectangle())
         }
@@ -309,8 +318,18 @@ struct QueueRowView: View {
 
     private var background: Color {
         if isCurrent { return Theme.amberWash }
-        if model.selectedInstanceID == instance.id { return Theme.panelRaised }
+        if model.selectedInstanceIDs.contains(instance.id) || model.selectedInstanceID == instance.id { return Theme.panelRaised }
         return Theme.panel
+    }
+
+    private var analysisHelp: String {
+        switch analysis?.state {
+        case .complete: return "Audio analysis complete. Structure and music features are available to the visual score."
+        case .partial: return "Audio analysis is partial. Some visual decisions will use live features instead."
+        case .running: return "Audio analysis is currently running."
+        case .failed: return "Audio analysis failed. Re-analyse this track for full music-reactive visuals."
+        default: return "This track has not been analysed yet."
+        }
     }
 
     private var analysisColor: Color {
@@ -326,6 +345,15 @@ struct QueueRowView: View {
     private var rightsIcon: String {
         guard let asset else { return "questionmark" }
         return model.library.rightsRecord(for: asset.id).allowsBroadcast ? "checkmark.seal" : "exclamationmark.triangle"
+    }
+
+    private var rightsHelp: String {
+        guard let asset else { return "Source file is missing from the library." }
+        let rights = model.library.rightsRecord(for: asset.id)
+        if !rights.allowsBroadcast { return "Broadcast rights are incomplete. Open Rights to declare recording, composition, and artwork permissions." }
+        if analysis?.state == .failed { return "Audio analysis failed. Re-analyse this track to restore music-reactive visuals." }
+        if analysis?.state != .complete { return "Audio analysis is incomplete; visual direction may fall back to live features." }
+        return "Broadcast rights and analysis are ready."
     }
 
     private var rightsColor: Color {
@@ -362,8 +390,17 @@ struct LibraryRowView: View {
         }
         .padding(.horizontal, 9)
         .frame(height: Theme.Metric.rowHeight)
-        .background(Theme.panel)
+        .background(model.selectedAssetIDs.contains(asset.id) ? Theme.panelRaised : Theme.panel)
         .overlay(alignment: .bottom) { HairlineDivider() }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            #if os(macOS)
+            let flags = NSEvent.modifierFlags
+            model.selectLibrary(asset.id, command: flags.contains(.command), shift: flags.contains(.shift))
+            #else
+            model.selectLibrary(asset.id, command: false, shift: false)
+            #endif
+        }
     }
 }
 

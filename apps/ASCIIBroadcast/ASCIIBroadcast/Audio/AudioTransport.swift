@@ -200,6 +200,33 @@ final class AudioTransport {
         if wasPlaying { play() }
     }
 
+    /// Seek against the absolute programme clock. This is the authoritative
+    /// path used by the Visual Score scrubber. It resolves the owning track,
+    /// switches sources if necessary, then aligns both track and programme time.
+    func seek(toProgramTime time: Double) {
+        guard !entries.isEmpty else { return }
+        let target = clamp(time, 0, entries.reduce(0) { $0 + max(0, $1.duration) })
+        var cursor = 0.0
+        var targetIndex = entries.count - 1
+        for (index, entry) in entries.enumerated() {
+            let end = cursor + max(0, entry.duration)
+            if target < end || index == entries.count - 1 { targetIndex = index; break }
+            cursor = end
+        }
+        let local = clamp(target - cursor, 0, max(0, entries[targetIndex].duration))
+        let wasPlaying = snapshot().isPlaying
+        if targetIndex != currentEntryIndex {
+            applyTrackChange(to: targetIndex, resetProgramTime: false)
+        }
+        seek(toTrackTime: local)
+        stateLock.lock()
+        trackStartProgramTime = cursor
+        state.programTime = cursor + local
+        state.epoch += 1
+        stateLock.unlock()
+        if wasPlaying && !snapshot().isPlaying { play() }
+    }
+
     func seek(toTrackTime time: Double) {
         let wasPlaying = snapshot().isPlaying
         seekOffset = max(0, time)

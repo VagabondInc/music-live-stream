@@ -10,8 +10,13 @@
 import Foundation
 import AVFoundation
 import Combine
+import CryptoKit
 #if canImport(UIKit)
 import UIKit
+#endif
+#if os(macOS)
+import AppKit
+import UniformTypeIdentifiers
 #endif
 
 final class StudioViewModel: ObservableObject {
@@ -46,6 +51,10 @@ final class StudioViewModel: ObservableObject {
     @Published var libraryTab: LibraryTab = .queue
     @Published var filterText = ""
     @Published var selectedInstanceID: UUID?
+    @Published var selectedInstanceIDs: Set<UUID> = []
+    @Published var selectedAssetIDs: Set<UUID> = []
+    private var queueSelectionAnchor: UUID?
+    private var librarySelectionAnchor: UUID?
     @Published var streamKeyInput = ""
     @Published var recordLocally = true
     @Published var useSimulatedLink = false
@@ -56,6 +65,7 @@ final class StudioViewModel: ObservableObject {
     @Published var banner: Banner?
     @Published var inspectorSections: Set<String> = ["SCENE_FAMILIES"]
     @Published var statusMessage = "READY"
+    @Published var reactiveVideoName: String?
 
     struct Banner: Identifiable, Equatable {
         enum Kind: Equatable { case info, warning, error, success }
@@ -360,6 +370,76 @@ final class StudioViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Palette / preset authoring
+
+    func effectivePalette() -> Palette { dna.customPalette ?? Palette.authored(for: dna.direction) }
+
+    func setPaletteColor(_ rgb: RGB, role: PaletteRole?) {
+        var palette = effectivePalette()
+        if let role { palette.colors[role] = rgb } else { palette.background = rgb }
+        palette.id = "custom-\(dna.id.uuidString.lowercased())"
+        palette.name = "CUSTOM"
+        dna.customPalette = palette
+        dna.paletteID = palette.id
+        dna.revision += 1
+        pushEngineInputs(); save()
+    }
+
+    func useAuthoredPalette() {
+        dna.customPalette = nil
+        dna.paletteID = Palette.authored(for: dna.direction).id
+        dna.revision += 1
+        pushEngineInputs(); save()
+    }
+
+    #if os(macOS)
+    func saveVisualPreset() {
+        let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "\(dna.name).asciidna.json"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do { try SessionStore.shared.exportPreset(dna, to: url); statusMessage = "VISUAL PRESET SAVED" }
+        catch { show(.error, "Preset could not be saved", error.localizedDescription, remedy: nil) }
+    }
+
+    func openVisualPreset() {
+        let panel = NSOpenPanel(); panel.allowedContentTypes = [.json]; panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do { dna = try SessionStore.shared.importPreset(from: url); compileScore(); pushEngineInputs(); save(); statusMessage = "VISUAL PRESET LOADED" }
+        catch { show(.error, "Preset could not be opened", error.localizedDescription, remedy: nil) }
+    }
+    #endif
+
+    // MARK: - Video-reactive source
+
+    #if os(macOS)
+    func chooseReactiveVideo() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        reactiveVideoName = url.lastPathComponent
+        renderer.setVideoSource(url)
+        if dna.effectiveVisualSource == .procedural { dna.visualSource = .videoReactive }
+        dna.revision += 1
+        pushEngineInputs(); save()
+        statusMessage = "VIDEO SOURCE READY"
+    }
+
+    func clearReactiveVideo() {
+        reactiveVideoName = nil
+        renderer.setVideoSource(nil)
+        if dna.effectiveVisualSource != .procedural { dna.visualSource = .procedural }
+        dna.revision += 1
+        pushEngineInputs(); save()
+    }
+    #endif
+
+    func setVisualSource(_ mode: VisualSourceMode) {
+        dna.visualSource = mode
+        dna.revision += 1
+        pushEngineInputs(); save()
+    }
+
     // MARK: - Transport actions
 
     func togglePlayPause() {
@@ -392,6 +472,11 @@ final class StudioViewModel: ObservableObject {
         transport.seek(toTrackTime: clamp(fraction, 0, 1) * trackDuration)
     }
 
+    func seekProgram(to time: Double) {
+        transport.seek(toProgramTime: clamp(time, 0, programDuration))
+        tick()
+    }
+
     func setLoops(_ value: Bool) {
         playlist.loops = value
         transport.loops = value
@@ -422,6 +507,54 @@ final class StudioViewModel: ObservableObject {
         save()
     }
 
+    func selectQueue(_ id: UUID, command: Bool, shift: Bool) {
+        let visible = filteredInstances.map(\.id)
+        if shift, let anchor = queueSelectionAnchor,
+           let a = visible.firstIndex(of: anchor), let b = visible.firstIndex(of: id) {
+            selectedInstanceIDs.formUnion(visible[min(a,b)...max(a,b)])
+        } else if command {
+            if selectedInstanceIDs.contains(id) { selectedInstanceIDs.remove(id) } else { selectedInstanceIDs.insert(id) }
+            queueSelectionAnchor = id
+        } else {
+            selectedInstanceIDs = [id]
+            queueSelectionAnchor = id
+        }
+        selectedInstanceID = id
+    }
+
+    func selectLibrary(_ id: UUID, command: Bool, shift: Bool) {
+        let visible = filteredLibraryAssets.map(\.id)
+        if shift, let anchor = librarySelectionAnchor,
+           let a = visible.firstIndex(of: anchor), let b = visible.firstIndex(of: id) {
+            selectedAssetIDs.formUnion(visible[min(a,b)...max(a,b)])
+        } else if command {
+            if selectedAssetIDs.contains(id) { selectedAssetIDs.remove(id) } else { selectedAssetIDs.insert(id) }
+            librarySelectionAnchor = id
+        } else {
+            selectedAssetIDs = [id]
+            librarySelectionAnchor = id
+        }
+    }
+
+    func removeSelected() {
+        if libraryTab == .queue {
+            let ids = selectedInstanceIDs.isEmpty ? Set([selectedInstanceID].compactMap { $0 }) : selectedInstanceIDs
+            playlist.instances.removeAll { ids.contains($0.id) }
+            selectedInstanceIDs.removeAll(); selectedInstanceID = nil
+        } else {
+            let ids = selectedAssetIDs
+            playlist.instances.removeAll { ids.contains($0.assetID) }
+            for id in ids {
+                if let asset = library.assets[id] { trackAnalyses.removeValue(forKey: asset.fingerprint) }
+                library.assets.removeValue(forKey: id); library.rights.removeValue(forKey: id)
+            }
+            selectedAssetIDs.removeAll()
+        }
+        playlist.touch()
+        loadTransportEntries(startAt: min(currentIndex, max(0, playlist.instances.count - 1)))
+        compileScore(); save()
+    }
+
     func addToQueue(assetID: UUID) {
         playlist.instances.append(TrackInstance(assetID: assetID))
         playlist.touch()
@@ -445,8 +578,10 @@ final class StudioViewModel: ObservableObject {
         var failures: [String] = []
         for url in urls {
             switch importOne(url: url) {
-            case .success: imported += 1
-            case .failure(let reason): failures.append(reason)
+            case .success:
+                imported += 1
+            case .failure(let failure):
+                failures.append(failure.reason)
             }
         }
         if imported > 0 {
@@ -501,7 +636,7 @@ final class StudioViewModel: ObservableObject {
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         let size = (attributes?[.size] as? NSNumber)?.intValue ?? 0
         let modified = (attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
-        let fingerprint = "\(size)-\(Int(modified))-\(url.lastPathComponent.hashValue)"
+        let fingerprint = stableFingerprint(url: url, size: size, modified: modified)
 
         #if os(macOS)
         let bookmark = try? url.bookmarkData(options: [.withSecurityScope],
@@ -534,6 +669,18 @@ final class StudioViewModel: ObservableObject {
         library.insert(sourceAsset)
         playlist.instances.append(TrackInstance(assetID: sourceAsset.id))
         return .success(())
+    }
+
+    private func stableFingerprint(url: URL, size: Int, modified: TimeInterval) -> String {
+        let head: Data
+        if let handle = try? FileHandle(forReadingFrom: url) {
+            defer { try? handle.close() }
+            head = (try? handle.read(upToCount: 64 * 1024)) ?? Data()
+        } else {
+            head = Data()
+        }
+        let digest = SHA256.hash(data: head).map { String(format: "%02x", $0) }.joined()
+        return "\(size)-\(Int(modified))-\(digest)"
     }
 
     private struct ImportFailure: Error { var reason: String }

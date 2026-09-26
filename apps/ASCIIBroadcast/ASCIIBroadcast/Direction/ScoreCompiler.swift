@@ -204,9 +204,29 @@ struct ScoreCompiler {
     // MARK: - Helpers
 
     static func slug(index: Int, title: String) -> String {
-        let words = title.uppercased().split(separator: " ").filter { $0.count > 2 }
-        let stem = words.prefix(2).joined(separator: "_")
-        let compact = stem.isEmpty ? "SCENE" : String(stem.prefix(16))
+        let words: [String] = title
+            .uppercased()
+            .split(whereSeparator: { $0.isWhitespace })
+            .filter { $0.count > 2 }
+            .map { String($0) }
+
+        var stem = ""
+
+        for word in words.prefix(2) {
+            if !stem.isEmpty {
+                stem += "_"
+            }
+            stem += word
+        }
+
+        let compact: String
+
+        if stem.isEmpty {
+            compact = "SCENE"
+        } else {
+            compact = String(stem.prefix(16))
+        }
+
         return String(format: "%02d_%@", index, compact)
     }
 

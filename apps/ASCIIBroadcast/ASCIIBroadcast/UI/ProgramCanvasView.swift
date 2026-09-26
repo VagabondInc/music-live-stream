@@ -14,15 +14,23 @@ struct ProgramCanvasView: View {
     var isPlaying: Bool
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { _ in
-            Canvas(opaque: true, rendersAsynchronously: false) { context, size in
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
+            GeometryReader { proxy in
                 let frame = renderer.frame()
-                context.withCGContext { cgContext in
-                    renderer.draw(into: cgContext, size: size, frame: frame)
+                if let image = renderer.previewImage(size: proxy.size, frame: frame) {
+                    Image(decorative: image, scale: 1, orientation: .up)
+                        .resizable()
+                        .interpolation(.none)
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        // The image is produced outside SwiftUI state. Tie its identity
+                        // to TimelineView's clock so SwiftUI cannot reuse the previous
+                        // CGImage while playback is advancing.
+                        .id(timeline.date)
+                } else {
+                    Theme.canvas
                 }
             }
         }
-        .drawingGroup(opaque: true)
         .background(Theme.canvas)
         .accessibilityElement()
         .accessibilityLabel("Program output")

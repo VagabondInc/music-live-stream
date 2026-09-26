@@ -106,9 +106,11 @@ struct MusicSection: Codable, Hashable, Identifiable {
 // MARK: - Track analysis
 
 struct TrackAnalysis: Codable, Hashable, Identifiable {
+    static let currentExtractorVersion = 3
+
     var id: UUID = UUID()
     var assetFingerprint: String
-    var extractorVersion: Int = 3
+    var extractorVersion: Int = Self.currentExtractorVersion
     var duration: Double = 0
     var tempo: Double = 0               // BPM, 0 = unknown
     var tempoConfidence: Double = 0

@@ -14,6 +14,7 @@
 
 import Foundation
 import AVFoundation
+import Combine
 import CoreMedia
 import QuartzCore
 
@@ -51,6 +52,7 @@ final class BroadcastCoordinator: ObservableObject {
     private let pumpQueue = DispatchQueue(label: "com.vagabond.asciibroadcast.pump", qos: .userInitiated)
     private var pump: DispatchSourceTimer?
     private var frameIndex: Int64 = 0
+    private var healthPublishTick: UInt64 = 0
     private var sentVideoConfiguration = false
     private var sentAudioConfiguration = false
     private var pendingVideoConfiguration: Data?
@@ -299,9 +301,12 @@ final class BroadcastCoordinator: ObservableObject {
         let recordingElapsed = recorder.isRecording ? recorder.elapsed : 0
         health.droppedFrames += videoEncoder.droppedFrames
 
-        // Publish at 4 Hz: the studio does not need 30 Hz numbers, and the
-        // main queue should not be woken for every frame.
-        if frameIndex % Int64(max(1, profile.frameRate / 4)) == 0 || !sending {
+        // Publish health at ~4 Hz in both preview and sending modes. frameIndex
+        // advances only while sending, so it cannot be used as the preview
+        // cadence counter without publishing on every video frame.
+        healthPublishTick &+= 1
+        let healthPublishInterval = UInt64(max(1, profile.frameRate / 4))
+        if healthPublishTick % healthPublishInterval == 0 {
             DispatchQueue.main.async {
                 self.engineHealth = health
                 self.publisherHealth = linkHealth

@@ -53,6 +53,12 @@ struct VisualScoreView: View {
                             playhead(width: trackWidth, duration: duration)
                         }
                         .frame(width: trackWidth)
+                        .contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let fraction = clamp(Double(value.location.x / max(1, trackWidth)), 0, 1)
+                                model.seekProgram(to: fraction * duration)
+                            })
                     }
                     .padding(.trailing, 10)
                 }

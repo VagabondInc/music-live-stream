@@ -22,7 +22,7 @@ enum PaletteRole: UInt8, Codable, CaseIterable {
     case shadow = 7      // recessive detail
 }
 
-struct RGB: Hashable {
+struct RGB: Codable, Hashable {
     var r: Double
     var g: Double
     var b: Double
@@ -50,7 +50,7 @@ struct RGB: Hashable {
     }
 }
 
-struct Palette {
+struct Palette: Codable, Hashable {
     var id: String
     var name: String
     var background: RGB

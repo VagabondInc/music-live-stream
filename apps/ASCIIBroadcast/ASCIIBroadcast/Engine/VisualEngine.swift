@@ -116,7 +116,7 @@ final class VisualEngine {
 
         // 1. Vocabulary and palette follow the DNA, then accessibility.
         vocabulary = GlyphVocabulary(profile: input.dna.glyphProfile)
-        var activePalette = Palette.authored(for: input.dna.direction)
+        var activePalette = input.dna.customPalette ?? Palette.authored(for: input.dna.direction)
         let drift = (Noise.fbm1D(input.programTime * 0.01, seed: input.dna.seed) - 0.5)
             * (Double(input.dna.controls.paletteDrift) / 100.0)
         activePalette = activePalette.adjusted(behaviour: input.dna.color,
@@ -166,6 +166,17 @@ final class VisualEngine {
                 renderScene(current, into: grid, snapshot: snapshot, tier: input.qualityTier)
             }
             outgoingScene = nil
+        }
+
+        // Music-reactive camera is global so CAMERA has visible authority in
+        // every scene family, not only scenes that happen to implement it.
+        let cameraAmount = Double(input.dna.controls.camera) / 100.0
+        if cameraAmount > 0.02 && !input.dna.reduceMotion {
+            let pulse = snapshot.ports.pressure * 0.65 + snapshot.ports.impact * 0.9
+            let lateral = sin(input.programTime * max(0.35, snapshot.tempo / 120.0))
+            let dx = Int((lateral * pulse * cameraAmount * 3.0).rounded())
+            let dy = Int(((snapshot.ports.body - 0.35) * cameraAmount * 2.0).rounded())
+            grid.translate(dx: dx, dy: dy)
         }
 
         // 5. Glyph-space effects, masked by ownership and protected reading.
@@ -278,13 +289,18 @@ final class VisualEngine {
         let features = input.features
 
         var ports = MusicPorts()
-        ports.pressure = pressure.update(Double(features.pressure), dt: dt)
-        ports.articulation = articulation.update(Double(features.articulation), dt: dt)
-        ports.body = bodyEnvelope.update(Double(features.body), dt: dt)
-        ports.air = airEnvelope.update(Double(features.highEnergy), dt: dt)
-        ports.brightness = Double(features.centroid)
-        ports.density = densityEnvelope.update(Double(features.onset) * 3.0, dt: dt)
-        ports.impact = Double(features.onset)
+        // Guided controls scale a common music bus so every scene receives an
+        // audible-to-visible response instead of isolated family-specific knobs.
+        let motionGain = 0.25 + input.dna.effectiveMotion * 1.35
+        let densityGain = 0.35 + Double(input.dna.controls.glyphDensity) / 100.0 * 1.3
+        let atmosphereGain = 0.35 + Double(input.dna.controls.atmosphere) / 100.0 * 1.2
+        ports.pressure = clamp(pressure.update(Double(features.pressure), dt: dt) * motionGain, 0, 1)
+        ports.articulation = clamp(articulation.update(Double(features.articulation), dt: dt) * motionGain, 0, 1)
+        ports.body = clamp(bodyEnvelope.update(Double(features.body), dt: dt) * motionGain, 0, 1)
+        ports.air = clamp(airEnvelope.update(Double(features.highEnergy), dt: dt) * atmosphereGain, 0, 1)
+        ports.brightness = clamp(Double(features.centroid) * atmosphereGain, 0, 1)
+        ports.density = clamp(densityEnvelope.update(Double(features.onset) * 3.0, dt: dt) * densityGain, 0, 1)
+        ports.impact = clamp(Double(features.onset) * motionGain, 0, 1)
 
         let section = input.analysis?.section(at: input.trackTime)
         var releaseTarget = 0.0

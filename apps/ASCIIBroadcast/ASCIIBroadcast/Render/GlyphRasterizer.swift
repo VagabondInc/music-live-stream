@@ -105,15 +105,13 @@ final class GlyphRasterizer: FrameRenderer {
         ensureFont(cellWidth: cellWidth, cellHeight: cellHeight)
 
         context.saveGState()
-        // Normalise to a y-down user space so one drawing path serves the
-        // SwiftUI canvas and the encoder's bitmap context.
-        if context.ctm.d > 0 {
-            context.translateBy(x: 0, y: size.height)
-            context.scaleBy(x: 1, y: -1)
-        }
+        // Keep Core Graphics/CoreText in their native y-up coordinate space.
+        // The engine stores row zero at the top, so rows are mapped explicitly
+        // below instead of combining a flipped CGContext with a flipped text matrix.
         context.interpolationQuality = .none
         context.setAllowsAntialiasing(true)
         context.setShouldAntialias(true)
+        context.setTextDrawingMode(.fill)
 
         // Ground.
         context.setFillColor(frame.palette.background.cgColor)
@@ -127,7 +125,7 @@ final class GlyphRasterizer: FrameRenderer {
                 guard cell.background != 255,
                       let role = PaletteRole(rawValue: cell.background) else { continue }
                 let rect = CGRect(x: CGFloat(column) * cellWidth,
-                                  y: CGFloat(row) * cellHeight,
+                                  y: size.height - CGFloat(row + 1) * cellHeight,
                                   width: cellWidth + 0.5,
                                   height: cellHeight + 0.5)
                 backgroundRects[role, default: []].append(rect)
@@ -138,13 +136,15 @@ final class GlyphRasterizer: FrameRenderer {
             context.fill(rects)
         }
 
-        // Glyph batches: one CoreText call per colour bucket.
-        context.textMatrix = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: 0)
+        // Glyph batches: one CoreText call per colour bucket. CoreText expects
+        // ordinary y-up text coordinates. Convert the top-down grid explicitly.
+        context.textMatrix = .identity
         var batches: [Int: (glyphs: [CGGlyph], positions: [CGPoint])] = [:]
         let baselineOffset = ascent * 0.92
 
         for row in 0..<frame.rows {
-            let y = CGFloat(row) * cellHeight + baselineOffset
+            let rowBottom = size.height - CGFloat(row + 1) * cellHeight
+            let y = rowBottom + baselineOffset
             for column in 0..<frame.columns {
                 let cell = frame.cells[row * frame.columns + column]
                 if cell.scalar == 32 { continue }

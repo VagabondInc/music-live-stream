@@ -44,6 +44,20 @@ enum WorldDirection: String, Codable, CaseIterable, CustomStringConvertible {
     }
 }
 
+enum VisualSourceMode: String, Codable, CaseIterable, CustomStringConvertible {
+    case procedural
+    case videoReactive
+    case hybrid
+
+    var description: String {
+        switch self {
+        case .procedural:   return "PROCEDURAL"
+        case .videoReactive:return "VIDEO_REACTIVE"
+        case .hybrid:       return "HYBRID"
+        }
+    }
+}
+
 enum PerformanceMode: String, Codable, CaseIterable, CustomStringConvertible {
     case restrained
     case expressive
@@ -191,11 +205,17 @@ struct VisualDNA: Codable, Hashable, Identifiable {
     var color: ColorBehavior = .restrained
     var glyphProfile: GlyphProfile = .terminal
     var cameraGrammar: CameraGrammar = .lateral
+    var visualSource: VisualSourceMode? = nil
+
+    /// Optional for backward-compatible decoding of presets/sessions created
+    /// before video-reactive sources existed.
+    var effectiveVisualSource: VisualSourceMode { visualSource ?? .procedural }
 
     var controls: GuidedControls = .safeDefault
     var familyWeights: [String: Double] = [:]      // SceneFamily.rawValue -> weight
     var motifs: [Motif] = []
     var paletteID: String = "night-transit"
+    var customPalette: Palette? = nil
 
     // Accessibility and safety travel with the DNA (Phase 2 §3).
     var photosensitivitySafe: Bool = true

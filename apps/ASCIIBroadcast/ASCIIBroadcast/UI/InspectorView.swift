@@ -8,6 +8,9 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct InspectorView: View {
     @ObservedObject var model: StudioViewModel
@@ -37,6 +40,9 @@ struct InspectorView: View {
                         EnumPickerRow(label: "COLOR", systemImage: "circle.lefthalf.filled",
                                       selection: Binding(get: { model.dna.color },
                                                          set: { model.setColor($0) }))
+                        EnumPickerRow(label: "SOURCE", systemImage: "film.stack",
+                                      selection: Binding(get: { model.dna.effectiveVisualSource },
+                                                         set: { model.setVisualSource($0) }))
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 8)
@@ -59,6 +65,32 @@ struct InspectorView: View {
                     .padding(.vertical, 9)
 
                     HairlineDivider(color: Theme.hairline)
+
+                    DisclosureRow(title: "VIDEO REACTIVE", expanded: section("VIDEO_REACTIVE")) {
+                        VStack(alignment: .leading, spacing: 7) {
+                            FieldRow(label: "SOURCE", value: model.reactiveVideoName ?? "NONE")
+                            HStack(spacing: 8) {
+                                Button("SELECT VIDEO") { model.chooseReactiveVideo() }
+                                if model.reactiveVideoName != nil { Button("CLEAR") { model.clearReactiveVideo() } }
+                            }
+                            .buttonStyle(.borderless)
+                            .font(Theme.mono(8.5, .medium))
+                            Text("VIDEO_REACTIVE converts local footage into shape-aware glyphs. Live onsets, flux and band energy drive contrast and luminance before glyph selection; HYBRID overlays strong contours onto the procedural world.")
+                                .font(Theme.mono(8.5)).foregroundStyle(Theme.textDim)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }.padding(.top, 4)
+                    }
+
+                    DisclosureRow(title: "LIVE REACTIVITY", expanded: section("LIVE_REACTIVITY")) {
+                        VStack(spacing: 5) {
+                            BarMeter(value: model.levelLeft, color: Theme.cyan, height: 3)
+                            FieldRow(label: "RMS", value: String(format: "%.2f", (model.levelLeft + model.levelRight) * 0.5))
+                            FieldRow(label: "LOW", value: String(format: "%.2f", model.bandEnergies.prefix(8).reduce(0,+) / 8.0))
+                            FieldRow(label: "MID", value: String(format: "%.2f", model.bandEnergies.dropFirst(8).prefix(8).reduce(0,+) / 8.0))
+                            FieldRow(label: "HIGH", value: String(format: "%.2f", model.bandEnergies.dropFirst(16).prefix(8).reduce(0,+) / 8.0))
+                            FieldRow(label: "BPM", value: model.liveBPM > 0 ? String(format: "%.1f", model.liveBPM) : "—")
+                        }.padding(.top, 4)
+                    }
 
                     DisclosureRow(title: "ATMOSPHERE", expanded: section("ATMOSPHERE")) {
                         VStack(spacing: 7) {
@@ -115,6 +147,14 @@ struct InspectorView: View {
                     DisclosureRow(title: "COLOR PALETTE", expanded: section("COLOR_PALETTE")) {
                         VStack(alignment: .leading, spacing: 8) {
                             PaletteStrip(direction: model.dna.direction)
+                            paletteEditor
+                            HStack(spacing: 6) {
+                                Button("SAVE PRESET") { model.saveVisualPreset() }
+                                Button("OPEN PRESET") { model.openVisualPreset() }
+                                Button("RESET COLORS") { model.useAuthoredPalette() }
+                            }
+                            .buttonStyle(.borderless)
+                            .font(Theme.mono(8.5, .medium))
                             EnumPickerRow(label: "GLYPH SET", systemImage: "character.cursor.ibeam",
                                           selection: Binding(get: { model.dna.glyphProfile },
                                                              set: { model.setGlyphProfile($0) }))
@@ -166,6 +206,32 @@ struct InspectorView: View {
                     }
                 }
             }
+        }
+    }
+
+    private var paletteEditor: some View {
+        let palette = model.effectivePalette()
+        return VStack(spacing: 4) {
+            paletteColorRow("BACKGROUND", rgb: palette.background, role: nil)
+            ForEach(PaletteRole.allCases, id: \.self) { role in
+                paletteColorRow(String(describing: role).uppercased(), rgb: palette.color(role), role: role)
+            }
+        }
+    }
+
+    private func paletteColorRow(_ label: String, rgb: RGB, role: PaletteRole?) -> some View {
+        HStack {
+            Text(label).font(Theme.mono(8.5)).foregroundStyle(Theme.textDim)
+            Spacer()
+            ColorPicker("", selection: Binding(
+                get: { Color(.sRGB, red: rgb.r, green: rgb.g, blue: rgb.b, opacity: 1) },
+                set: { color in
+                    #if os(macOS)
+                    let ns = NSColor(color).usingColorSpace(.sRGB) ?? NSColor(color)
+                    model.setPaletteColor(RGB(r: Double(ns.redComponent), g: Double(ns.greenComponent), b: Double(ns.blueComponent)), role: role)
+                    #endif
+                }), supportsOpacity: false)
+                .labelsHidden().frame(width: 34)
         }
     }
 

@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import Combine
 
 // MARK: - Programme level
 
@@ -149,7 +150,7 @@ final class AnalysisService: ObservableObject {
         guard !isRunning else { return }
         let pending = jobs.filter { job in
             guard let cached = existing[job.fingerprint] else { return true }
-            return cached.state != .complete || cached.extractorVersion != TrackAnalysis().extractorVersion
+            return cached.state != .complete || cached.extractorVersion != TrackAnalysis.currentExtractorVersion
         }
         guard !pending.isEmpty else {
             phase = "ANALYSIS CURRENT"
